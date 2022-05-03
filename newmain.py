@@ -123,7 +123,7 @@ while True:
             time.sleep(10)
         # And that message is "Stop",
         elif text[0:4] == 'Stop':
-            print("Stoping GPS tracker")
+            print("Stopping GPS tracking")
             # Stop sending GPS location
             lastmessage = 'Stop'
     # If there is no new message,
@@ -160,6 +160,7 @@ while True:
                 time.sleep(10)
         # Otherwise, do nothing
         else:
+            print("No new start messages yet")
             time.sleep(10)
 
 #MAIN LOOP ENDS
