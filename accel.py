@@ -1,6 +1,5 @@
-# MPU 6050 Code
-import smbus  # SMBus module of I2C
-from time import sleep  # Import sleep module of time
+import smbus
+from time import sleep
 
 # MPU6050 Registers and their address
 PWR_MGMT_1 = 0x6B

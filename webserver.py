@@ -13,16 +13,20 @@ from pubnub.pubnub import PubNub
 from pubnub.exceptions import PubNubException
 from pygtkcompat.generictreemodel import handle_exception
 
+# Name of channel that Raspberry Pi tracker will use with PubNub
 pnChannel = "raspi-tracker"
 
+# PubNub configuration information
 pnconfig = PNConfiguration()
 pnconfig.subscribe_key = "sub-c-0b00fc02-ca83-11ec-8ef5-82b465a2b170"
 pnconfig.publish_key = "pub-c-150e9604-b132-4f9d-9d6f-2d504e0e2d4a"
 pnconfig.ssl = False
-
 pubnub = PubNub(pnconfig)
 pubnub.subscribe().channels(pnChannel).execute()
 
+
+
+# OLD GPS TRACKING CODE
 while True:
     port = "/dev/ttyAMA0"
     ser = serial.Serial(port, baudrate=9600, timeout=0.5)
