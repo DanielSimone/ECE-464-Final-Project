@@ -7,11 +7,10 @@
 import serial
 import time
 import string
-import pynmea2
-import smbus2 as smbus
 import math
 import sys
-from pygsm import GsmModem
+import smbus2 as smbus
+from gsmHat import GSMHat, SMS, GPS
 from time import sleep
 from pubnub.pnconfiguration import PNConfiguration
 from pubnub.pubnub import PubNub
@@ -85,96 +84,46 @@ print("Reading Data of Accelerometer")
 #GPS/GSM CONFIGURATION STARTS#
 
 # Switch GPS on
-def SwitchGPSon():
-    print("Switching GPS on ...")
-    reply = gsm.command('AT+CGNSPWR=1')
-    print(reply)
-
-# Switch GPS off
-def SwitchGPSoff():
-    print("Switching GPS off ...")
-    reply = gsm.command('AT+CGNSPWR=0')
-    print(reply)
-
-# Send GPS location
-def SendGPSPosition():
-    print("Getting GPS position ...")
-    reply = gsm.command('AT+CGNSINF')
-    list = reply[0].split(",")
-    UTC = list[2][8:10] + ':' + list[2][10:12] + ':' + list[2][12:14]
-    Latitude = list[3]
-    Longitude = list[4]
-    Altitude = list[5]
-    print('Position: ' + UTC + ', ' + Latitude + ', ' + Longitude + ', ' + Altitude)
-    # Send text to mobile
-    Message = ' Position: ' + UTC + ', ' + str(Latitude) + ', ' + str(Longitude) + ', ' + str(
-        Altitude) + ' http://maps.google.com/?q=' + str(Latitude) + ',' + str(Longitude)
-    print("Sending to mobile " + MobileNumber + ": " + Message)
-    gsm.send_sms(MobileNumber, Message)
-    #
-    try:
-        envelope = pubnub.publish().channel(pnChannel).message({
-            'lat': Latitude,
-            'lng': Longitude
-        }).sync()
-        print("publish timetoken: %d" % envelope.result.timetoken)
-    except PubNubException as e:
-        handle_exception(e)
-    #
-
-# Set mobile number here
-MobileNumber = "3059042757"
-lastmessage = 'Stop'
-
-# Start serial connection to GSM modem
-print("Reading Data of GSM Modem")
-gsm = GsmModem(port="/dev/serial0") #May need to set to serial1 depending on Raspberry Pi version
-gsm.boot()
-
-# Note down modem details for identification
-print("Modem details:")
-reply = gsm.hardware()
-print("Manufacturer = " + reply['manufacturer'])
-print("Model = " + reply['model'])
-
-# Try and get the phone number
-reply = gsm.command('AT+CNUM')
-if len(reply) > 1:
-    list = reply[0].split(",")
-    phone = list[1].strip('\"')
-    print("Phone number = " + phone)
-
-# Clear old messages
-gsm.query("AT+CMGD=70,4")
-
-# Turn on GPS
-SwitchGPSon()
-print("Reading Data of GPS module")
+gsm = GSMHat('/dev/ttyS0', 115200)
+# Set YOUR PHONE's number here
+phone = '+13059042757'
 
 #GPS/GSM CONFIGURATION ENDS#
 
 #MAIN LOOP BEGINS
 
 # Begin sending messages
-print("Boot successful, waiting for messages ...")
+print("Boot successful, waiting for messages")
 while True:
-    # Check for messages
-    message = gsm.next_message()
-    # When a new message appears,
-    if message:
-        print("loop 1")
-        print(message)
-        text = message.text
+    # Set last message to be stop
+    lastmessage = 'Stop'
+    # Check if new SMS is available
+    if gsm.SMS_available() > 0:
+        # Get new SMS text
+        text = gsm.SMS_read()
         # And that message is "Start",
         if text[0:5] == 'Start':
-            print("Start sending Position ...")
-            # Send an initial GPS location
-            SendGPSPosition()
+            print("Sending initial position")
+            # Send an initial GPS location by SMS
+            GPSObj = gsm.GetActualGPS()
+            latitude = str(GPSObj.Latitude)
+            longitude = str(GPSObj.Longitue)
+            gsm.SMS_write(phone, 'Initial position:' + 'Latitude: %s ' % latitude + 'Longitude: %s ' % longitude)
+            # Send an initial GPS location to PubNub
+            try:
+                envelope = pubnub.publish().channel(pnChannel).message({
+                    'lat': latitude,
+                    'lng': longitude
+                }).sync()
+                print("publish timetoken: %d" % envelope.result.timetoken)
+            except PubNubException as e:
+                handle_exception(e)
+            # Set last message and wait 10 seconds
             lastmessage = 'Start'
-            time.sleep(300)
+            time.sleep(10)
         # And that message is "Stop",
         elif text[0:4] == 'Stop':
-            print("Text was Stop. Stop sending")
+            print("Stoping GPS tracker")
             # Stop sending GPS location
             lastmessage = 'Stop'
     # If there is no new message,
@@ -191,9 +140,24 @@ while True:
             Az = acc_z / 16384.0
             # Only send an update if acceleration is above 0.05g
             if(Ax < 0.05 and Ay < 0.05 and Az <0.05):
-                print(lastmessage + ' loop2')
-                SendGPSPosition()
-                time.sleep(300)
+                print("Acceleration detected: sending new position")
+                # Send updated GPS location by SMS
+                GPSObj = gsm.GetActualGPS()
+                latitude = str(GPSObj.Latitude)
+                longitude = str(GPSObj.Longitue)
+                gsm.SMS_write(phone, 'New position:' + 'Latitude: %s ' % latitude + 'Longitude: %s ' % longitude)
+                # Send updated GPS location to PubNub
+                try:
+                    envelope = pubnub.publish().channel(pnChannel).message({
+                        'lat': latitude,
+                        'lng': longitude
+                    }).sync()
+                    print("publish timetoken: %d" % envelope.result.timetoken)
+                except PubNubException as e:
+                    handle_exception(e)
+                # Set last message and wait 10 seconds
+                lastmessage = 'Start'
+                time.sleep(10)
         # Otherwise, do nothing
         else:
             time.sleep(10)
