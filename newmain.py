@@ -12,24 +12,24 @@ import sys
 import smbus2 as smbus
 from gsmHat import GSMHat, SMS, GPS
 from time import sleep
-from pubnub.pnconfiguration import PNConfiguration
-from pubnub.pubnub import PubNub
-from pubnub.exceptions import PubNubException
-from pygtkcompat.generictreemodel import handle_exception
+# from pubnub.pnconfiguration import PNConfiguration
+# from pubnub.pubnub import PubNub
+# from pubnub.exceptions import PubNubException
+# from pygtkcompat.generictreemodel import handle_exception
 
 
 # SERVER CONFIGURATION STARTS
 
 # Name of channel that Raspberry Pi tracker will use with PubNub
-pnChannel = "raspi-tracker"
+# pnChannel = "raspi-tracker"
 
 # PubNub configuration information
-pnconfig = PNConfiguration()
-pnconfig.subscribe_key = "sub-c-0b00fc02-ca83-11ec-8ef5-82b465a2b170"
-pnconfig.publish_key = "pub-c-150e9604-b132-4f9d-9d6f-2d504e0e2d4a"
-pnconfig.ssl = False
-pubnub = PubNub(pnconfig)
-pubnub.subscribe().channels(pnChannel).execute()
+# pnconfig = PNConfiguration()
+# pnconfig.subscribe_key = "sub-c-0b00fc02-ca83-11ec-8ef5-82b465a2b170"
+# pnconfig.publish_key = "pub-c-150e9604-b132-4f9d-9d6f-2d504e0e2d4a"
+# pnconfig.ssl = False
+# pubnub = PubNub(pnconfig)
+# pubnub.subscribe().channels(pnChannel).execute()
 
 # SERVER CONFIGURATION ENDS
 
@@ -110,14 +110,14 @@ while True:
             longitude = str(GPSObj.Longitue)
             gsm.SMS_write(phone, 'Initial position:' + 'Latitude: %s ' % latitude + 'Longitude: %s ' % longitude)
             # Send an initial GPS location to PubNub
-            try:
-                envelope = pubnub.publish().channel(pnChannel).message({
-                    'lat': latitude,
-                    'lng': longitude
-                }).sync()
-                print("publish timetoken: %d" % envelope.result.timetoken)
-            except PubNubException as e:
-                handle_exception(e)
+            # try:
+            #     envelope = pubnub.publish().channel(pnChannel).message({
+            #         'lat': latitude,
+            #         'lng': longitude
+            #     }).sync()
+            #     print("publish timetoken: %d" % envelope.result.timetoken)
+            # except PubNubException as e:
+            #     handle_exception(e)
             # Set last message and wait 10 seconds
             lastmessage = 'Start'
             time.sleep(10)
@@ -147,14 +147,14 @@ while True:
                 longitude = str(GPSObj.Longitue)
                 gsm.SMS_write(phone, 'New position:' + 'Latitude: %s ' % latitude + 'Longitude: %s ' % longitude)
                 # Send updated GPS location to PubNub
-                try:
-                    envelope = pubnub.publish().channel(pnChannel).message({
-                        'lat': latitude,
-                        'lng': longitude
-                    }).sync()
-                    print("publish timetoken: %d" % envelope.result.timetoken)
-                except PubNubException as e:
-                    handle_exception(e)
+                # try:
+                #     envelope = pubnub.publish().channel(pnChannel).message({
+                #         'lat': latitude,
+                #         'lng': longitude
+                #     }).sync()
+                #     print("publish timetoken: %d" % envelope.result.timetoken)
+                # except PubNubException as e:
+                #     handle_exception(e)
                 # Set last message and wait 10 seconds
                 lastmessage = 'Start'
                 time.sleep(10)
