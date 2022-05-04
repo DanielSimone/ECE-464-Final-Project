@@ -12,28 +12,28 @@ import sys
 import smbus2 as smbus
 from gsmHat import GSMHat, SMS, GPS
 from time import sleep
-# from pubnub.pnconfiguration import PNConfiguration
-# from pubnub.pubnub import PubNub
-# from pubnub.exceptions import PubNubException
-# from pygtkcompat.generictreemodel import handle_exception
+from pubnub.pnconfiguration import PNConfiguration
+from pubnub.pubnub import PubNub
+from pubnub.exceptions import PubNubException
+from pygtkcompat.generictreemodel import handle_exception
 
 
 # SERVER CONFIGURATION STARTS
 
 # Name of channel that Raspberry Pi tracker will use with PubNub
-# pnChannel = "raspi-tracker"
+pnChannel = "raspi-tracker"
 
 # PubNub configuration information
-# pnconfig = PNConfiguration()
-# pnconfig.subscribe_key = "sub-c-0b00fc02-ca83-11ec-8ef5-82b465a2b170"
-# pnconfig.publish_key = "pub-c-150e9604-b132-4f9d-9d6f-2d504e0e2d4a"
-# pnconfig.ssl = False
-# pubnub = PubNub(pnconfig)
-# pubnub.subscribe().channels(pnChannel).execute()
+pnconfig = PNConfiguration()
+pnconfig.subscribe_key = "sub-c-0b00fc02-ca83-11ec-8ef5-82b465a2b170"
+pnconfig.publish_key = "pub-c-150e9604-b132-4f9d-9d6f-2d504e0e2d4a"
+pnconfig.ssl = False
+pubnub = PubNub(pnconfig)
+pubnub.subscribe().channels(pnChannel).execute()
 
 # SERVER CONFIGURATION ENDS
 
-#ACCELEROMETER CONFIGURATION STARTS
+# ACCELEROMETER CONFIGURATION STARTS
 
 # MPU6050 Registers and their address
 PWR_MGMT_1 = 0x6B
@@ -75,22 +75,22 @@ def read_raw_data(addr):
 bus = smbus.SMBus(1)  # Alternatively, bus = smbus.SMBus(0) for older version boards
 Device_Address = 0x68  # MPU6050 device address
 
-#Initialize the MPU6050
+# Initialize the MPU6050
 MPU_Init()
 print("Reading Data of Accelerometer")
 
-#ACCELEROMETER CONFIGURATION ENDS#
+# ACCELEROMETER CONFIGURATION ENDS#
 
-#GPS/GSM CONFIGURATION STARTS#
+# GPS/GSM CONFIGURATION STARTS#
 
 # Switch GPS on
 gsm = GSMHat('/dev/ttyS0', 115200)
 # Set YOUR PHONE's number here
 phone = '+13059042757'
 
-#GPS/GSM CONFIGURATION ENDS#
+# GPS/GSM CONFIGURATION ENDS#
 
-#MAIN LOOP BEGINS
+# MAIN LOOP BEGINS
 
 # Begin sending messages
 print("Boot successful, waiting for messages")
@@ -110,14 +110,14 @@ while True:
             longitude = str(GPSObj.Longitue)
             gsm.SMS_write(phone, 'Initial position:' + 'Latitude: %s ' % latitude + 'Longitude: %s ' % longitude)
             # Send an initial GPS location to PubNub
-            # try:
-            #     envelope = pubnub.publish().channel(pnChannel).message({
-            #         'lat': latitude,
-            #         'lng': longitude
-            #     }).sync()
-            #     print("publish timetoken: %d" % envelope.result.timetoken)
-            # except PubNubException as e:
-            #     handle_exception(e)
+            try:
+                envelope = pubnub.publish().channel(pnChannel).message({
+                    'lat': latitude,
+                    'lng': longitude
+                }).sync()
+                print("publish timetoken: %d" % envelope.result.timetoken)
+            except PubNubException as e:
+                handle_exception(e)
             # Set last message and wait 10 seconds
             lastmessage = 'Start'
             time.sleep(10)
@@ -139,7 +139,7 @@ while True:
             Ay = acc_y / 16384.0
             Az = acc_z / 16384.0
             # Only send an update if acceleration is above 0.05g
-            if(Ax < 0.05 and Ay < 0.05 and Az <0.05):
+            if(abs(Ax) > 1 or abs(Ay) > 1 or abs(Az) > 1):
                 print("Acceleration detected: sending new position")
                 # Send updated GPS location by SMS
                 GPSObj = gsm.GetActualGPS()
@@ -147,14 +147,14 @@ while True:
                 longitude = str(GPSObj.Longitue)
                 gsm.SMS_write(phone, 'New position:' + 'Latitude: %s ' % latitude + 'Longitude: %s ' % longitude)
                 # Send updated GPS location to PubNub
-                # try:
-                #     envelope = pubnub.publish().channel(pnChannel).message({
-                #         'lat': latitude,
-                #         'lng': longitude
-                #     }).sync()
-                #     print("publish timetoken: %d" % envelope.result.timetoken)
-                # except PubNubException as e:
-                #     handle_exception(e)
+                try:
+                    envelope = pubnub.publish().channel(pnChannel).message({
+                        'lat': latitude,
+                        'lng': longitude
+                    }).sync()
+                    print("publish timetoken: %d" % envelope.result.timetoken)
+                except PubNubException as e:
+                    handle_exception(e)
                 # Set last message and wait 10 seconds
                 lastmessage = 'Start'
                 time.sleep(10)
